@@ -52,6 +52,4 @@ The system is architected as a **Stateless Microservice** ecosystem deployed on 
     pip install -r requirements.txt
     streamlit run streamlit_app.py
     ```
-
 ---
-*Developed by Ravi Teja Mallajosyula*
