@@ -1,11 +1,22 @@
 import streamlit as st
 import requests
 import base64
+from PIL import Image
+import io
 
 # Configuration from Secrets/Environment
 BACKEND_URL = "https://fridge-backend-service-845166114793.us-central1.run.app"
 # This will raise an informative error in Streamlit UI if you forgot to add it to the Secrets tab
 PORTFOLIO_TOKEN = st.secrets.get("X_PORTFOLIO_TOKEN", "")
+
+def compress_image(uploaded_file):
+    img = Image.open(uploaded_file)
+    # Resize so the max dimension is 1024px
+    img.thumbnail((1024, 1024)) 
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=85) # Convert to optimized JPEG
+    return buf.getvalue()
+
 
 st.set_page_config(page_title="AI Fridge Chef", page_icon="🍳", layout="centered")
 st.title("🍳 AI Fridge Chef")
@@ -26,7 +37,7 @@ if uploaded_file is not None:
         with st.spinner("Analyzing ingredients and planning your meal..."):
             try:
                 # 1. Base64 Encoding
-                image_bytes = uploaded_file.getvalue()
+                image_bytes = compress_image(uploaded_file)
                 base64_string = base64.b64encode(image_bytes).decode('utf-8')
                 
                 # 2. Secure Request Construction
@@ -38,7 +49,7 @@ if uploaded_file is not None:
                     f"{BACKEND_URL}/analyze", 
                     json=payload, 
                     headers=headers,
-                    timeout=30 # Staff Tip: Always set a timeout for cloud requests
+                    timeout=90 # Staff Tip: Always set a timeout for cloud requests
                 )
                 
                 # 4. Result Processing
