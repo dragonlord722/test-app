@@ -3,3 +3,5 @@ uvicorn
 google-genai
 slowapi
 python-multipart
+pillow
+requests

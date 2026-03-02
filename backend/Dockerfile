@@ -1,20 +1,17 @@
-# 1. Minimal base image
 FROM python:3.11-slim
 
-# 2. Set working directory
-WORKDIR /code
+# Set the working directory inside the container
+WORKDIR /app
 
-# 3. Copy only the backend requirements first for Docker layer caching
+# Copy requirements first (for better caching)
 COPY requirements.txt .
-
-# 4. Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 5. Copy the app module into the container
-COPY app/ ./app/
+# Copy the actual code
+# If your local folder is backend/app/, this copies 'app/' into '/app/app/'
+COPY . .
 
-# 6. Expose the Cloud Run port
-EXPOSE 8080
-
-# 7. Start Uvicorn pointing to the new module path (app.main)
+# Start uvicorn
+# We use 'app.main:app' because 'app' is the folder and 'main' is the file
+# Correct CMD for Cloud Run
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
