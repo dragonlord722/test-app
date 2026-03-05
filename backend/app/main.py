@@ -10,14 +10,32 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from pydantic import BaseModel
 from google import genai
+from google.genai import types
 import logging
 from dotenv import load_dotenv
+from pydantic import BaseModel, Field
+from typing import List
 
 # Load the .env file explicitly
 load_dotenv()
 
 # Setup Logging
 logging.basicConfig(level=logging.INFO)
+
+class Recipe(BaseModel):
+    name: str = Field(description="A creative name for the recipe")
+    description: str = Field(description="A 2-sentence appetizing summary")
+    ingredients_needed: List[str] = Field(description="List of items required from the fridge")
+    instructions: str = Field(description="Step-by-step cooking guide")
+
+class AnalysisResponse(BaseModel):
+    is_valid_fridge_image: bool
+    error_message: str
+    ingredients: List[str] = Field(description="List of all visible food items")
+    missing_essentials: List[str]
+    recipes: List[Recipe] = Field(
+        description="Provide at least 2-3 creative recipes based ONLY on the found ingredients."
+    )
 
 def load_prompt(version: str):
     # Ensure we look in the 'backend/prompts' directory relative to this file
@@ -91,21 +109,25 @@ async def analyze_image(request: Request, payload: ImagePayload): # FIX: Use Ima
         client = genai.Client(api_key=api_key)
         
         # Note: Ensure you are using the correct model string for your SDK version
-        response = client.models.generate_content(
-            model='gemini-2.0-flash', 
-            contents=[image, system_prompt],
-            config={"response_mime_type": "application/json"}
+        # Change from 'gemini-2.0-flash' to:
+        config = types.GenerateContentConfig(
+        response_mime_type="application/json",
+        response_schema= AnalysisResponse,
+        thinking_config=types.ThinkingConfig(
+            include_thoughts=True, # Valid for 2.5 models
+            thinking_budget=1024   # Valid for 2.5 models
+            )
         )
-
-        response_data = json.loads(response.text)
         
-        return {
-            "is_valid_fridge_image": response_data.get("is_valid_fridge_image", False),
-            "error_message": response_data.get("error_message", ""),
-            "ingredients": response_data.get("ingredients", []),
-            "missing_essentials": response_data.get("missing_essentials", []),
-            "recipes": response_data.get("recipes", [])
-        }
+        response = client.models.generate_content(
+            model='gemini-2.5-flash', 
+            contents=[image, system_prompt],        
+            config=config
+        )
+        
+        return response.parsed
+
+       
     except Exception as e:
         logging.error(f"Prediction Error: {str(e)}")
         raise HTTPException(status_code=500, detail="AI processing failed.")
