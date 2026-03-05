@@ -5,3 +5,4 @@ slowapi
 python-multipart
 pillow
 requests
+python-dotenv
